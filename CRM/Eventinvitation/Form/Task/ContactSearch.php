@@ -226,10 +226,6 @@ class CRM_Eventinvitation_Form_Task_ContactSearch extends CRM_Contact_Form_Task
     {
         $contactIdsAsCommaSeparatedList = implode(',', $contactIds);
 
-        if (!empty($emailTypes)) {
-          $emailTypesAsCommaSeparatedList = implode(',', $emailTypes);
-        }
-
         if(empty($emailTypes)) {
           $where_clause = "
                 email.contact_id IN ($contactIdsAsCommaSeparatedList)
@@ -237,6 +233,7 @@ class CRM_Eventinvitation_Form_Task_ContactSearch extends CRM_Contact_Form_Task
                 AND contact.do_not_email = 0
                 AND contact.is_deleted = 0";
         } else {
+          $emailTypesAsCommaSeparatedList = implode(',', $emailTypes);
           $where_clause = "
                 email.contact_id IN ($contactIdsAsCommaSeparatedList)
                 AND email.on_hold = 0
