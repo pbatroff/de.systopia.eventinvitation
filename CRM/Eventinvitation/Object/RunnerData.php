@@ -36,4 +36,7 @@ class CRM_Eventinvitation_Object_RunnerData extends CRM_Eventinvitation_Object_B
     /** @var string $temp_dir */
     public $temp_dir;
 
+  /** @var string $emailTypes */
+  public $emailTypes;
+
 }

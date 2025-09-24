@@ -41,34 +41,31 @@ class CRM_Eventinvitation_Queue_Runner_EmailSender extends CRM_Eventinvitation_Q
      *
      * @throws \CiviCRM_API3_Exception
      */
-    protected function processContact($contactId, $templateTokens)
+    protected function processContact($contactId, $templateTokens, $emailTypes)
     {
-        $contactData = civicrm_api3(
-            'Contact',
-            'getsingle',
-            [
-                'id' => $contactId,
-                'return' => 'display_name,email'
-            ]
-        );
-        $email = \Civi\Api4\Email::get(FALSE)
-            ->selectRowCount()
-            ->addWhere('contact_id', '=', $contactId)
-            ->addWhere('email', '=', $contactData['email'])
-            ->addWhere('on_hold', '=', 0)
-            ->execute()
-            ->count();
-        if ($email >= 1) {
-            $emailData = [
+
+      $contact = \Civi\Api4\Contact::get(FALSE)
+              ->addSelect('display_name')
+              ->addWhere('id', '=', $contactId)
+              ->execute()
+              ->first();
+
+      $emails = \Civi\Api4\Email::get(FALSE)
+              ->addSelect('contact_id', 'location_type_id', 'email')
+              ->addWhere('location_type_id', 'IN', $emailTypes)
+              ->addWhere('contact_id', '=', $contactId)
+              ->execute();
+      foreach ($emails as $email) {
+        // do something
+        $emailData = [
                 'id' => $this->runnerData->templateId,
-                'toName' => $contactData['display_name'],
-                'toEmail' => $contactData['email'],
+                'toName' => $contact['display_name'],
+                'toEmail' => $email['email'],
                 'from' => $this->emailSender,
                 'contactId' => $contactId,
                 'tplParams' => $templateTokens,
-            ];
-
-            civicrm_api3('MessageTemplate', 'send', $emailData);
-        }
+        ];
+        civicrm_api3('MessageTemplate', 'send', $emailData);
+      }
     }
 }

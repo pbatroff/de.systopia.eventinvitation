@@ -48,7 +48,7 @@ abstract class CRM_Eventinvitation_Queue_Runner_Job
      *
      * @throws \CiviCRM_API3_Exception
      */
-    protected abstract function processContact($contactId, $templateTokens);
+    protected abstract function processContact($contactId, $templateTokens, $emailTypes);
 
     /**
      * Dispatch the contacts to the processContact function
@@ -63,7 +63,7 @@ abstract class CRM_Eventinvitation_Queue_Runner_Job
             try {
                 $participantId = $this->setParticipantToInvited($contactId);
                 $templateTokens = $this->getTemplateTokens($participantId);
-                $this->processContact($contactId, $templateTokens);
+                $this->processContact($contactId, $templateTokens, $this->runnerData->emailTypes);
             } catch (Exception $error) {
                 $transaction->rollback();
                 Civi::log()->warning("Generating email/pdf for contact {$contactId} failed: " . $error->getMessage());

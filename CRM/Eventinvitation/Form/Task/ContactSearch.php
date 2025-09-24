@@ -23,6 +23,7 @@ class CRM_Eventinvitation_Form_Task_ContactSearch extends CRM_Contact_Form_Task
     const TEMPLATE_ELEMENT_NAME = 'template';
     const EMAIL_SENDER_ELEMENT_NAME = 'email_sender';
     const PARTICIPANT_ROLES_ELEMENT_NAME = 'participant_roles';
+    const EMAIL_LOCATION_TYPE = 'email_location_type';
 
     const SETTINGS_KEY = 'eventinvitation_form_task_contactsearch_settings';
     const TEMPLATE_SETTINGS_KEY = 'template_default';
@@ -126,6 +127,19 @@ class CRM_Eventinvitation_Form_Task_ContactSearch extends CRM_Contact_Form_Task
             ]
         );
 
+        $emailTypes = $this->getEmailTypes();
+        $this->add(
+                'select',
+                self::EMAIL_LOCATION_TYPE,
+                E::ts('Email Types'),
+                $emailTypes,
+                false,
+                [
+                        'class' => 'crm-select2 huge',
+                        'multiple' => 'multiple'
+                ]
+        );
+
         // set default values
         $this->setDefaults([
            self::TEMPLATE_ELEMENT_NAME          => Civi::settings()->get('event_invitation_default_template'),
@@ -181,9 +195,15 @@ class CRM_Eventinvitation_Form_Task_ContactSearch extends CRM_Contact_Form_Task
         $participantRoleId = $values[self::PARTICIPANT_ROLES_ELEMENT_NAME];
 
         $contactIds = $this->_contactIds;
+        $emailTypes = $values[self::EMAIL_LOCATION_TYPE];
 
-        if (!$shallBePdfs && !$this->contactsHaveEmails($contactIds)) {
+        if (!$shallBePdfs && !$this->contactsHaveEmails($contactIds, $emailTypes)) {
+          if (empty($emailTypes)) {
             $this->_errors[self::PDFS_INSTEAD_OF_EMAILS_ELEMENT_NAME] = E::ts("There are contacts that have no usable e-mail address.");
+          } else {
+            $this->_errors[self::EMAIL_LOCATION_TYPE] = E::ts("There are contacts that have no usable e-mail address, or some contacts dont' have emails with the chosen location type.");
+          }
+
         }
 
         if ($this->contactsHaveNotInvitedParticipants($contactIds, $eventId, $participantRoleId)) {
@@ -202,9 +222,29 @@ class CRM_Eventinvitation_Form_Task_ContactSearch extends CRM_Contact_Form_Task
         return $result;
     }
 
-    private function contactsHaveEmails(array $contactIds): bool
+    private function contactsHaveEmails(array $contactIds, array $emailTypes = NULL): bool
     {
         $contactIdsAsCommaSeparatedList = implode(',', $contactIds);
+
+        if (!empty($emailTypes)) {
+          $emailTypesAsCommaSeparatedList = implode(',', $emailTypes);
+        }
+
+        if(empty($emailTypes)) {
+          $where_clause = "
+                email.contact_id IN ($contactIdsAsCommaSeparatedList)
+                AND email.on_hold = 0
+                AND contact.do_not_email = 0
+                AND contact.is_deleted = 0";
+        } else {
+          $where_clause = "
+                email.contact_id IN ($contactIdsAsCommaSeparatedList)
+                AND email.on_hold = 0
+                AND email.location_type_id IN ($emailTypesAsCommaSeparatedList)
+                AND contact.do_not_email = 0
+                AND contact.is_deleted = 0";
+        }
+
 
         $query =
         "SELECT
@@ -219,11 +259,7 @@ class CRM_Eventinvitation_Form_Task_ContactSearch extends CRM_Contact_Form_Task
                 civicrm_contact AS contact
                     ON
                         contact.id = email.contact_id
-            WHERE
-                email.contact_id IN ($contactIdsAsCommaSeparatedList)
-                AND email.on_hold = 0
-                AND contact.do_not_email = 0
-                AND contact.is_deleted = 0
+            WHERE $where_clause
         ) AS distinct_contact
         ";
 
@@ -315,6 +351,7 @@ class CRM_Eventinvitation_Form_Task_ContactSearch extends CRM_Contact_Form_Task
         $runnerData->contactIds = $this->_contactIds;
         $runnerData->eventId = $values[self::EVENT_ELEMENT_NAME];
         $runnerData->participantRoleId = $values[self::PARTICIPANT_ROLES_ELEMENT_NAME];
+        $runnerData->emailTypes = $values[self::EMAIL_LOCATION_TYPE];
         if (!empty($values['resource_demand_id'])) {
             $runnerData->resourceDemandId = $values['resource_demand_id'];
         }
@@ -394,4 +431,18 @@ class CRM_Eventinvitation_Form_Task_ContactSearch extends CRM_Contact_Form_Task
 
         return $list;
     }
+
+    private function getEmailTypes() :array
+    {
+      $list = [];
+
+      $locationTypes = \Civi\Api4\LocationType::get(TRUE)
+              ->addSelect('id', 'name')
+              ->execute();
+      foreach ($locationTypes as $type) {
+        $list[$type['id']] = $type['name'];
+      }
+      return $list;
+    }
+
 }

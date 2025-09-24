@@ -56,6 +56,11 @@
         <div class="content">{$form.email_sender.html}</div>
         <div class="clear"></div>
     </div>
+  <div class="crm-section">
+    <div class="label">{$form.email_location_type.label}</div>
+    <div class="content">{$form.email_location_type.html}</div>
+    <div class="clear"></div>
+  </div>
 
     {* FOOTER *}
     <br>
